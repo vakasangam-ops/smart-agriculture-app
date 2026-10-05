@@ -1,0 +1,23 @@
+{
+  "name": "smart-agriculture-app",
+  "version": "1.0.0",
+  "description": "Krishi Sahayak — Smart Agriculture & Village Service Center Platform",
+  "type": "module",
+  "scripts": {
+    "dev:server": "cd server && npm run dev",
+    "dev:client": "cd client && npm run dev",
+    "start:server": "cd server && npm start",
+    "install:all": "cd server && npm install && cd ../client && npm install",
+    "build": "cd client && npm install && npm run build",
+    "test": "cd server && npm test"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^1.4.5-lts.1",
+    "pg": "^8.13.1"
+  }
+}

@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Production builds
+dist/
+client/dist/
+build/
+
+# Environment variables (contains sensitive secrets)
+.env
+.env.local
+.env.*.local
+server/.env
+
+# Local database runtime state & logs
+server/data/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Vercel
+.vercel
