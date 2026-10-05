@@ -7,17 +7,25 @@ import { getSeedData } from './seedData.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const dataDir = path.resolve(__dirname, '../../data');
+import os from 'os';
+
+const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.TMPDIR);
+const dataDir = isServerless ? path.join(os.tmpdir(), 'krishi_data') : path.resolve(__dirname, '../../data');
 const jsonDbPath = path.join(dataDir, 'krishi_db.json');
 
 // Ensure data directory exists
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
+try {
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+  }
+} catch (e) {
+  console.warn('Data directory creation notice:', e.message);
 }
 
 let pgPool = null;
 let usePostgres = false;
 let memoryStore = null;
+
 
 export async function initDb() {
   const databaseUrl = process.env.DATABASE_URL;
@@ -165,9 +173,14 @@ export async function initDb() {
 
 function saveToDisk() {
   if (memoryStore) {
-    fs.writeFileSync(jsonDbPath, JSON.stringify(memoryStore, null, 2), 'utf-8');
+    try {
+      fs.writeFileSync(jsonDbPath, JSON.stringify(memoryStore, null, 2), 'utf-8');
+    } catch (e) {
+      console.warn('Persistence notice: in-memory state active (disk write avoided):', e.message);
+    }
   }
 }
+
 
 // ── Unified Database Access Layer (PostgreSQL + Embedded Store) ──────────
 export const db = {

@@ -15,20 +15,97 @@ import {
   FlaskConical,
   Tractor,
   Menu,
-  X
+  X,
+  LogIn,
+  LogOut,
+  UserPlus,
+  User,
+  Lock,
+  Phone,
+  MapPin,
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
 
 export function Navbar({ activeTab, setActiveTab, onOpenVoiceAssistant }) {
-  const { user, switchRole, logout } = useAuth();
+  const { user, login, register, switchRole, logout } = useAuth();
   const { language, setLanguage, t, isSpeaking, stopSpeaking } = useLanguage();
-  const [showRoleModal, setShowRoleModal] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authTab, setAuthTab] = useState('profile'); // 'login' | 'register' | 'roles' | 'profile'
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => document.documentElement.getAttribute('data-theme') === 'dark');
+
+  // Form states
+  const [loginPhone, setLoginPhone] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [regData, setRegData] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    password: '',
+    role: 'FARMER',
+    village: 'Tenali',
+    district: 'Guntur',
+    state: 'Andhra Pradesh',
+    language: 'en'
+  });
+  const [authMsg, setAuthMsg] = useState({ text: '', type: '' });
+  const [submitting, setSubmitting] = useState(false);
 
   const toggleTheme = () => {
     const next = !isDarkMode;
     setIsDarkMode(next);
     document.documentElement.setAttribute('data-theme', next ? 'dark' : 'light');
+  };
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setAuthMsg({ text: '', type: '' });
+    if (!loginPhone || !loginPassword) {
+      setAuthMsg({ text: 'Please enter phone/email and password', type: 'error' });
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await login(loginPhone, loginPassword);
+      setAuthMsg({ text: 'Logged in successfully!', type: 'success' });
+      setTimeout(() => {
+        setShowAuthModal(false);
+        setAuthMsg({ text: '', type: '' });
+      }, 1000);
+    } catch (err) {
+      setAuthMsg({ text: err.message || 'Login failed. Please verify credentials.', type: 'error' });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    setAuthMsg({ text: '', type: '' });
+    if (!regData.name || !regData.phone || !regData.password) {
+      setAuthMsg({ text: 'Name, phone number, and password are required', type: 'error' });
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await register({ ...regData, language });
+      setAuthMsg({ text: 'Account registered & logged in!', type: 'success' });
+      setTimeout(() => {
+        setShowAuthModal(false);
+        setAuthMsg({ text: '', type: '' });
+      }, 1000);
+    } catch (err) {
+      setAuthMsg({ text: err.message || 'Registration failed. Try a different phone number.', type: 'error' });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleLogout = () => {
+    logout();
+    setAuthTab('login');
+    setAuthMsg({ text: 'Logged out successfully.', type: 'success' });
   };
 
   const roles = [
@@ -37,6 +114,12 @@ export function Navbar({ activeTab, setActiveTab, onOpenVoiceAssistant }) {
     { id: 'AGRI_EXPERT', label: t('roleExpert'), icon: FlaskConical, desc: 'Diagnose disease tickets, prescribe treatments' },
     { id: 'ADMIN', label: t('roleAdmin'), icon: Shield, desc: 'System KPIs, user directory, broadcast alerts' }
   ];
+
+  const openModal = (tab = 'profile') => {
+    setAuthTab(user ? tab : 'login');
+    setAuthMsg({ text: '', type: '' });
+    setShowAuthModal(true);
+  };
 
   return (
     <>
@@ -139,10 +222,10 @@ export function Navbar({ activeTab, setActiveTab, onOpenVoiceAssistant }) {
               </select>
             </div>
 
-            {/* Current Role & Switcher Button */}
+            {/* Account & Role Switcher Button */}
             <button
-              id="btn-role-switcher"
-              onClick={() => setShowRoleModal(true)}
+              id="btn-auth-account"
+              onClick={() => openModal(user ? 'profile' : 'login')}
               className="btn btn-secondary btn-sm"
               style={{
                 display: 'flex',
@@ -154,7 +237,7 @@ export function Navbar({ activeTab, setActiveTab, onOpenVoiceAssistant }) {
             >
               <UserCheck size={16} style={{ color: 'var(--primary-700)' }} />
               <span style={{ fontWeight: 700, color: 'var(--primary-800)', fontSize: '0.82rem' }}>
-                {user ? user.role.replace('_', ' ') : 'Role'}
+                {user ? `${user.name.split(' ')[0]} (${user.role.replace('_', ' ')})` : 'Sign In / Roles'}
               </span>
             </button>
 
@@ -224,76 +307,308 @@ export function Navbar({ activeTab, setActiveTab, onOpenVoiceAssistant }) {
         </nav>
       </header>
 
-      {/* Role Switcher Modal */}
-      {showRoleModal && (
-        <div className="modal-overlay" onClick={() => setShowRoleModal(false)}>
-          <div className="modal-dialog" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '520px' }}>
+      {/* Unified Auth & Role Modal */}
+      {showAuthModal && (
+        <div className="modal-overlay" onClick={() => setShowAuthModal(false)}>
+          <div className="modal-dialog" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '540px' }}>
             <div className="modal-header">
               <div>
                 <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <UserCheck size={20} style={{ color: 'var(--primary-600)' }} />
-                  {t('switchRole')}
+                  <Sprout size={22} style={{ color: 'var(--primary-600)' }} />
+                  {authTab === 'login' && 'Sign In to Krishi Sahayak'}
+                  {authTab === 'register' && 'Farmer Registration'}
+                  {authTab === 'roles' && 'Quick Role Switcher'}
+                  {authTab === 'profile' && 'User Account Profile'}
                 </h3>
-                <p style={{ fontSize: '0.84rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-                  Experience Krishi Sahayak from each real-world stakeholder perspective.
+                <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                  Secure agricultural access across web and mobile
                 </p>
               </div>
-              <button className="btn-icon" onClick={() => setShowRoleModal(false)}>
+              <button className="btn-icon" onClick={() => setShowAuthModal(false)}>
                 <X size={18} />
               </button>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {roles.map(r => {
-                const Icon = r.icon;
-                const isCurrent = user?.role === r.id;
-                return (
-                  <div
-                    key={r.id}
-                    onClick={() => {
-                      switchRole(r.id);
-                      setShowRoleModal(false);
-                    }}
-                    style={{
-                      padding: '14px 16px',
-                      borderRadius: 'var(--radius-md)',
-                      border: isCurrent ? '2px solid var(--primary-600)' : '1px solid var(--border-color)',
-                      background: isCurrent ? 'var(--primary-50)' : 'var(--bg-card-subtle)',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '14px',
-                      transition: 'all var(--transition-fast)'
-                    }}
-                  >
-                    <div style={{
-                      width: '40px',
-                      height: '40px',
-                      borderRadius: '10px',
-                      background: isCurrent ? 'var(--primary-600)' : 'var(--border-color)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: isCurrent ? 'white' : 'var(--text-muted)'
-                    }}>
-                      <Icon size={20} />
+            {/* Tab navigation within modal */}
+            <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px', marginBottom: '16px' }}>
+              {user && (
+                <button
+                  className={`btn btn-sm ${authTab === 'profile' ? 'btn-primary' : 'btn-secondary'}`}
+                  onClick={() => setAuthTab('profile')}
+                >
+                  <User size={14} style={{ marginRight: '4px' }} /> Profile
+                </button>
+              )}
+              <button
+                className={`btn btn-sm ${authTab === 'roles' ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => setAuthTab('roles')}
+              >
+                <UserCheck size={14} style={{ marginRight: '4px' }} /> Demo Roles
+              </button>
+              <button
+                className={`btn btn-sm ${authTab === 'login' ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => setAuthTab('login')}
+              >
+                <LogIn size={14} style={{ marginRight: '4px' }} /> Sign In
+              </button>
+              <button
+                className={`btn btn-sm ${authTab === 'register' ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => setAuthTab('register')}
+              >
+                <UserPlus size={14} style={{ marginRight: '4px' }} /> Register
+              </button>
+            </div>
+
+            {/* Alert banner */}
+            {authMsg.text && (
+              <div style={{
+                padding: '10px 14px',
+                borderRadius: 'var(--radius-md)',
+                marginBottom: '14px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontSize: '0.86rem',
+                background: authMsg.type === 'success' ? '#ecfdf5' : '#fef2f2',
+                color: authMsg.type === 'success' ? '#047857' : '#b91c1c',
+                border: `1px solid ${authMsg.type === 'success' ? '#a7f3d0' : '#fecaca'}`
+              }}>
+                {authMsg.type === 'success' ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
+                <span>{authMsg.text}</span>
+              </div>
+            )}
+
+            {/* PROFILE TAB */}
+            {authTab === 'profile' && user && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div style={{
+                  padding: '16px',
+                  borderRadius: 'var(--radius-md)',
+                  background: 'var(--bg-card-subtle)',
+                  border: '1px solid var(--border-color)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '16px'
+                }}>
+                  <div style={{
+                    width: '52px',
+                    height: '52px',
+                    borderRadius: '50%',
+                    background: 'var(--primary-600)',
+                    color: 'white',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '1.3rem',
+                    fontWeight: 800
+                  }}>
+                    {user.name.charAt(0)}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <h4 style={{ margin: 0, fontSize: '1.05rem', color: 'var(--text-main)' }}>{user.name}</h4>
+                    <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                      {user.phone} {user.email ? `• ${user.email}` : ''}
                     </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <strong style={{ color: 'var(--text-main)', fontSize: '0.96rem' }}>{r.label}</strong>
-                        {isCurrent && <span className="badge badge-success">ACTIVE</span>}
-                      </div>
-                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                        {r.desc}
-                      </div>
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
+                      <span className="badge badge-success">{user.role}</span>
+                      <span className="badge badge-info">{user.village}, {user.district}</span>
                     </div>
                   </div>
-                );
-              })}
-            </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                  <button
+                    className="btn btn-secondary"
+                    style={{ flex: 1 }}
+                    onClick={() => setAuthTab('roles')}
+                  >
+                    Switch Stakeholder Role
+                  </button>
+                  <button
+                    className="btn btn-outline"
+                    style={{ color: '#dc2626', borderColor: '#fca5a5' }}
+                    onClick={handleLogout}
+                  >
+                    <LogOut size={16} style={{ marginRight: '6px' }} /> Sign Out
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* LOGIN TAB */}
+            {authTab === 'login' && (
+              <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div>
+                  <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Phone size={14} /> Phone Number or Email
+                  </label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="e.g., 9876543210 or demo@krishi.org"
+                    value={loginPhone}
+                    onChange={(e) => setLoginPhone(e.target.value)}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Lock size={14} /> Password
+                  </label>
+                  <input
+                    type="password"
+                    className="form-control"
+                    placeholder="Enter your password (e.g. Farmer@123)"
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    required
+                  />
+                </div>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                  Demo Accounts: <code>9876543210</code> / <code>Farmer@123</code> or switch to <b>Demo Roles</b> tab.
+                </div>
+                <button type="submit" className="btn btn-primary" disabled={submitting} style={{ marginTop: '6px' }}>
+                  {submitting ? 'Authenticating...' : 'Sign In'}
+                </button>
+              </form>
+            )}
+
+            {/* REGISTER TAB */}
+            {authTab === 'register' && (
+              <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div>
+                    <label className="form-label">Full Name *</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="e.g. Venkata Rao"
+                      value={regData.name}
+                      onChange={(e) => setRegData({ ...regData, name: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label">Phone Number *</label>
+                    <input
+                      type="tel"
+                      className="form-control"
+                      placeholder="10-digit mobile"
+                      value={regData.phone}
+                      onChange={(e) => setRegData({ ...regData, phone: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div>
+                    <label className="form-label">Password *</label>
+                    <input
+                      type="password"
+                      className="form-control"
+                      placeholder="Create password"
+                      value={regData.password}
+                      onChange={(e) => setRegData({ ...regData, password: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label">Account Role</label>
+                    <select
+                      className="form-control"
+                      value={regData.role}
+                      onChange={(e) => setRegData({ ...regData, role: e.target.value })}
+                    >
+                      <option value="FARMER">Farmer (రైతు)</option>
+                      <option value="SERVICE_CENTER_STAFF">Service Center Staff</option>
+                      <option value="AGRI_EXPERT">Agriculture Expert</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div>
+                    <label className="form-label">Village / Mandal</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={regData.village}
+                      onChange={(e) => setRegData({ ...regData, village: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label">District</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={regData.district}
+                      onChange={(e) => setRegData({ ...regData, district: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <button type="submit" className="btn btn-primary" disabled={submitting} style={{ marginTop: '8px' }}>
+                  {submitting ? 'Registering Account...' : 'Complete Registration & Sign In'}
+                </button>
+              </form>
+            )}
+
+            {/* DEMO ROLES TAB */}
+            {authTab === 'roles' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {roles.map(r => {
+                  const Icon = r.icon;
+                  const isCurrent = user?.role === r.id;
+                  return (
+                    <div
+                      key={r.id}
+                      onClick={() => {
+                        switchRole(r.id);
+                        setShowAuthModal(false);
+                      }}
+                      style={{
+                        padding: '12px 14px',
+                        borderRadius: 'var(--radius-md)',
+                        border: isCurrent ? '2px solid var(--primary-600)' : '1px solid var(--border-color)',
+                        background: isCurrent ? 'var(--primary-50)' : 'var(--bg-card-subtle)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        transition: 'all var(--transition-fast)'
+                      }}
+                    >
+                      <div style={{
+                        width: '38px',
+                        height: '38px',
+                        borderRadius: '8px',
+                        background: isCurrent ? 'var(--primary-600)' : 'var(--border-color)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: isCurrent ? 'white' : 'var(--text-muted)'
+                      }}>
+                        <Icon size={18} />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <strong style={{ color: 'var(--text-main)', fontSize: '0.92rem' }}>{r.label}</strong>
+                          {isCurrent && <span className="badge badge-success">ACTIVE</span>}
+                        </div>
+                        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                          {r.desc}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       )}
     </>
   );
 }
+

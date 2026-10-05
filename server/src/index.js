@@ -23,8 +23,20 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
-app.use(cors());
+// Enhanced CORS configuration for localhost, vercel deployments, and custom domains
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow all requests (including mobile apps, localhost, vercel preview & prod domains)
+    callback(null, true);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  exposedHeaders: ['Authorization']
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -41,26 +53,38 @@ app.use((req, res, next) => {
 });
 
 // Health check endpoint
-app.get('/api/health', (req, res) => {
+const healthHandler = (req, res) => {
   res.json({
     status: 'ONLINE',
     service: 'Krishi Sahayak API Engine',
     timestamp: new Date().toISOString(),
     version: '1.0.0',
+    environment: process.env.NODE_ENV || 'production',
     db_mode: process.env.DATABASE_URL ? 'PostgreSQL' : 'Embedded High-Performance Engine'
   });
+};
+
+app.get('/health', healthHandler);
+app.get('/api/health', healthHandler);
+
+// Route mappings mounted with both /api and root prefixes for compatibility with all Vercel proxy rewrite modes
+const routes = [
+  ['/auth', authRoutes],
+  ['/farms', farmRoutes],
+  ['/issues', issueRoutes],
+  ['/services', serviceRoutes],
+  ['/schemes', schemeRoutes],
+  ['/market', marketRoutes],
+  ['/weather', weatherRoutes],
+  ['/finances', financeRoutes],
+  ['/admin', adminRoutes]
+];
+
+routes.forEach(([pathPrefix, router]) => {
+  app.use(`/api${pathPrefix}`, router);
+  app.use(pathPrefix, router);
 });
 
-// Mount Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/farms', farmRoutes);
-app.use('/api/issues', issueRoutes);
-app.use('/api/services', serviceRoutes);
-app.use('/api/schemes', schemeRoutes);
-app.use('/api/market', marketRoutes);
-app.use('/api/weather', weatherRoutes);
-app.use('/api/finances', financeRoutes);
-app.use('/api/admin', adminRoutes);
 
 // 404 Handler
 app.use((req, res) => {
@@ -83,8 +107,9 @@ app.use((err, req, res, next) => {
 // Export app for test runner
 export default app;
 
-// Start server if not in test or Vercel serverless environment
-if (process.env.NODE_ENV !== 'test' && !process.env.VERCEL) {
+// Start server only when executed directly and not in test or Vercel serverless environment
+const isDirectRun = process.argv[1] && (process.argv[1].endsWith('index.js') || process.argv[1].endsWith('index'));
+if (isDirectRun && process.env.NODE_ENV !== 'test' && !process.env.VERCEL) {
   (async () => {
     try {
       console.log('🌱 Initializing Krishi Sahayak Platform database...');
@@ -99,4 +124,5 @@ if (process.env.NODE_ENV !== 'test' && !process.env.VERCEL) {
     }
   })();
 }
+
 

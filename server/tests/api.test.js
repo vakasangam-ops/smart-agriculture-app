@@ -1,8 +1,10 @@
+process.env.NODE_ENV = 'test';
 import test from 'node:test';
 import assert from 'node:assert';
 import request from 'supertest';
 import app from '../src/index.js';
 import { initDb } from '../src/db/index.js';
+
 
 test.before(async () => {
   await initDb();
